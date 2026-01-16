@@ -21,7 +21,6 @@ jobs:
         run: |
           curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
           sudo python2.7 get-pip.py
-          pip2.7 --version
          
           python --version
           pip2 --version
