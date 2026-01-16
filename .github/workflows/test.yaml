@@ -19,30 +19,10 @@ jobs:
       - name: Install Python 2.7 and Pip (Ubuntu 24.04)
         if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
         run: |
-          # 1. Install Build Dependencies
-          sudo apt update
-          sudo apt install -y build-essential checkinstall wget curl \
-              libncursesw5-dev libssl-dev libsqlite3-dev tk-dev \
-              libgdbm-dev libc6-dev libbz2-dev
-
-          # 2. Download and Compile Python 2.7.18
-          wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
-          tar -xvf Python-2.7.18.tgz
-          cd Python-2.7.18
-          ./configure --enable-optimizations
-          make -j$(nproc)
-          sudo make install
-          cd ..
-
-          # 3. Set up System Symlinks
-          sudo ln -sf /usr/local/bin/python2.7 /usr/bin/python
-          sudo ln -sf /usr/local/bin/python2.7 /usr/bin/python2
-
-          # 4. Install Pip for Python 2.7
           curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
           sudo python2.7 get-pip.py
-
-          # 5. Verify Installations
+          pip2.7 --version
+         
           python --version
           pip2 --version
 
