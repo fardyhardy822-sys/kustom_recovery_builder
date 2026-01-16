@@ -16,31 +16,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Python 2.7 (Ubuntu 24.04 Workaround)
+      - name: Install Python 2.7 (Ubuntu 24.04 Noble)
         if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
         run: |
-          # Install dependencies needed for older software
           sudo apt update
-          sudo apt install -y libssl-dev libffi-dev libncurses5-dev zlib1g-dev
+          sudo apt install -y libssl-dev libffi-dev libncurses5-dev zlib1g-dev wget tar
+        
+          # New verified URL from the astral-sh organization
+          URL="https://github.com/astral-sh/python-build-standalone/releases/download/20240107/cpython-2.7.18+20240107-x86_64-unknown-linux-gnu-install_only.tar.gz"
+        
+          echo "Downloading Python 2.7..."
+          wget -q "$URL" -O python2.tar.gz
+        
+          # Check if file is actually a gzip (and not a 404 page)
+          if ! file python2.tar.gz | grep -q 'gzip compressed data'; then
+            echo "Download failed or link moved again. Trying fallback..."
+            # Fallback link
+            wget -q "https://github.com/indygreg/python-build-standalone/releases/download/20230507/cpython-2.7.18%2B20230507-x86_64-unknown-linux-gnu-install_only.tar.gz" -O python2.tar.gz
+          fi
 
-          # Use a more reliable source for portable Python 2.7
-          # This uses the python-build-standalone but with a direct browser-mimicking download
-          wget https://github.com/indygreg/python-build-standalone/releases/download/20240107/cpython-2.7.18%2B20240107-x86_64-unknown-linux-gnu-install_only.tar.gz
-          
-          # Create directory and extract
           mkdir -p $HOME/python27
-          tar -xzf cpython-2.7.18+20240107-x86_64-unknown-linux-gnu-install_only.tar.gz -C $HOME/python27
-          
-          # Fix the symlinks globally
-          # We use 'force' to overwrite any existing python3 links if necessary
+          tar -xzf python2.tar.gz -C $HOME/python27
+        
+          # Create symlinks
           sudo ln -sf $HOME/python27/python/bin/python2.7 /usr/bin/python
           sudo ln -sf $HOME/python27/python/bin/python2.7 /usr/bin/python2
-          
-          # Verify installation
-          echo "Python version check:"
+        
+          # Verify
+          echo "Successfully installed:"
           python --version
-          echo "Python path check:"
-          which python
 
       - name: Test Python Logic
         run: |
