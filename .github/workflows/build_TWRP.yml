@@ -145,13 +145,18 @@ jobs:
       
     - name: Install Python 2
       if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
-      run: |
-        sudo apt -y install python
-        sudo rm -rf /usr/bin/python
-        sudo ln -s /usr/bin/python2 /usr/bin/python
-        # sudo ln -s /usr/bin/python3 /usr/bin/python3
+      uses: actions/setup-python@v4
+      with:
+        python-version: '2.7'
       continue-on-error: true
-
+      
+    - name: Link Python 2 as Default
+      if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
+      run: |
+        sudo ln -sf $(which python2) /usr/bin/python
+        python --version
+      continue-on-error: true
+      
     - name: Building Image 
       run: |
         cd android-recovery
