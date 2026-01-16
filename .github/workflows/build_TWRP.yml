@@ -143,17 +143,13 @@ jobs:
         fi
       continue-on-error: true
       
-    - name: Install Python 2
-      if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
-      uses: actions/setup-python@v4
-      with:
-        python-version: '2.7'
-      continue-on-error: true
-      
-    - name: Link Python 2 as Default
+    - name: Manual Python 2.7 Workaround
       if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
       run: |
-        sudo ln -sf $(which python2) /usr/bin/python
+        curl -L https://github.com/indygreg/python-build-standalone/releases/download/20200816/cpython-2.7.18-x86_64-unknown-linux-gnu-pgo-20200816T1456.tar.zst -o python.tar.zst
+        sudo apt update && sudo apt install -y zstd
+        tar -I zstd -xf python.tar.zst
+        sudo ln -sf $(pwd)/python/bin/python2 /usr/bin/python
         python --version
       continue-on-error: true
       
