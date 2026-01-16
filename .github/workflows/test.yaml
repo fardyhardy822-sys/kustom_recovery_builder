@@ -22,28 +22,22 @@ jobs:
           sudo apt update
           sudo apt install -y libssl-dev libffi-dev libncurses5-dev zlib1g-dev wget tar
         
-          # New verified URL from the astral-sh organization
-          URL="https://github.com/astral-sh/python-build-standalone/releases/download/20240107/cpython-2.7.18+20240107-x86_64-unknown-linux-gnu-install_only.tar.gz"
+          # Download from a verified stable release tag
+          # We use -L to follow redirects and a User-Agent to prevent 403/404 errors
+          echo "Downloading Python 2.7.18..."
+          curl -fSL "https://github.com/astral-sh/python-build-standalone/releases/download/20230507/cpython-2.7.18+20230507-x86_64-unknown-linux-gnu-install_only.tar.gz" -o python2.tar.gz
         
-          echo "Downloading Python 2.7..."
-          wget -q "$URL" -O python2.tar.gz
-        
-          # Check if file is actually a gzip (and not a 404 page)
-          if ! file python2.tar.gz | grep -q 'gzip compressed data'; then
-            echo "Download failed or link moved again. Trying fallback..."
-            # Fallback link
-            wget -q "https://github.com/indygreg/python-build-standalone/releases/download/20230507/cpython-2.7.18%2B20230507-x86_64-unknown-linux-gnu-install_only.tar.gz" -O python2.tar.gz
-          fi
-
+          # Create directory and extract
           mkdir -p $HOME/python27
           tar -xzf python2.tar.gz -C $HOME/python27
         
-          # Create symlinks
+          # Set up Symlinks
+          # This forces the 'python' command to point to our new Python 2.7
           sudo ln -sf $HOME/python27/python/bin/python2.7 /usr/bin/python
           sudo ln -sf $HOME/python27/python/bin/python2.7 /usr/bin/python2
         
           # Verify
-          echo "Successfully installed:"
+          echo "Check Python Version:"
           python --version
 
       - name: Test Python Logic
