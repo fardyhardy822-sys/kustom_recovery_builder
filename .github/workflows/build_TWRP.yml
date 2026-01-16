@@ -143,13 +143,21 @@ jobs:
         fi
       continue-on-error: true
       
-    - name: Manual Python 2.7 Workaround
+    - name: Manual Python 2.7 Install
       if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
       run: |
-        curl -L https://github.com/indygreg/python-build-standalone/releases/download/20200816/cpython-2.7.18-x86_64-unknown-linux-gnu-pgo-20200816T1456.tar.zst -o python.tar.zst
-        sudo apt update && sudo apt install -y zstd
-        tar -I zstd -xf python.tar.zst
-        sudo ln -sf $(pwd)/python/bin/python2 /usr/bin/python
+        # Download a verified portable Python 2.7
+        curl -Lo python_bin.tar.gz https://github.com/indygreg/python-build-standalone/releases/download/20240107/cpython-2.7.18+20240107-x86_64-unknown-linux-gnu-install_only.tar.gz
+        
+        # Extract
+        mkdir -p python2_folder
+        tar -xzf python_bin.tar.gz -C python2_folder
+        
+        # Create the symlink so the build system finds 'python'
+        sudo ln -sf $(pwd)/python2_folder/python/bin/python2 /usr/bin/python
+        sudo ln -sf $(pwd)/python2_folder/python/bin/python2 /usr/bin/python2
+        
+        # Verify
         python --version
       continue-on-error: true
       
