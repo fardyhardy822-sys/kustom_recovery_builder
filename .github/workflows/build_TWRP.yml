@@ -193,8 +193,21 @@ jobs:
     - name: Set Build Date # Output will be use in Release
       run: |
         echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
-      
-    - name: Upload to Release (boot and becovery)
+
+    - name: Prepare Clean Metadata
+      run: |
+        # Strip .git from the end of the URL to prevent 404 errors
+        CLEAN_URL=$(echo "${{ github.event.inputs.DEVICE_TREE }}" | sed 's/\.git$//')
+        echo "CLEAN_DEVICE_TREE=$CLEAN_URL" >> $GITHUB_ENV
+        
+        # Ensure COMMIT_ID is set (fetching from the device tree directory)
+        # Adjust the path 'device/*/${{ github.event.inputs.DEVICE_NAME }}' if your tree is elsewhere
+        if [ -z "$COMMIT_ID" ]; then
+          cd device/*/${{ github.event.inputs.DEVICE_NAME }} || cd android-recovery/device/*/${{ github.event.inputs.DEVICE_NAME }}
+          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        fi
+        
+    - name: Upload to Release (boot and recovery)
       if: github.event.inputs.BUILD_TARGET == 'boot' || github.event.inputs.BUILD_TARGET == 'recovery'
       uses: softprops/action-gh-release@v2
       with:
@@ -204,8 +217,8 @@ jobs:
         tag_name: ${{ github.run_id }}
         body: |
           Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Device: [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
-          Commit: Most recent [commit](${{ github.event.inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
+          Device: [Device Tree/Branch](${{ env.CLEAN_DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
+          Commit: Most recent [commit](${{ env.CLEAN_DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
       continue-on-error: true
       
     - name: Upload to Release (if vendor_boot)
@@ -218,8 +231,8 @@ jobs:
         tag_name: ${{ github.run_id }}
         body: |
           Build: ${{ github.event.inputs.MANIFEST_BRANCH }}
-          Device: [Device Tree/Branch](${{ github.event.inputs.DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
-          Commit: Most recent [commit](${{ github.event.inputs.DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
+          Device: [Device Tree/Branch](${{ env.CLEAN_DEVICE_TREE }}/tree/${{ github.event.inputs.DEVICE_TREE_BRANCH }})
+          Commit: Most recent [commit](${{ env.CLEAN_DEVICE_TREE }}/commit/${{ env.COMMIT_ID }}) during building.
       continue-on-error: true
       
     - name: Run LDCheck
@@ -241,7 +254,7 @@ jobs:
         "${{ env.BUILD_DATE }}" \
         "${{ env.COMMIT_ID }}" \
         "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
-        "${{ github.event.inputs.DEVICE_TREE }}" \
+        "${{ env.CLEAN_DEVICE_TREE }}" \
         "${{ secrets.TELEGRAM_CHAT_ID }}" \
         "${{ secrets.TELEGRAM_TOKEN }}" \
         "${{ github.workflow }}"
