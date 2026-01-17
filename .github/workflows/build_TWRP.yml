@@ -158,6 +158,22 @@ jobs:
          sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
          python -V
       continue-on-error: true
+
+    - name: libncurse 5
+      if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
+      run: |
+          sudo apt update
+          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.3-2ubuntu0.1_amd64.deb
+
+          sudo dpkg -i libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          sudo dpkg -i libncurses5_6.3-2ubuntu0.1_amd64.deb
+
+          sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.5 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+          sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.5 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+ 
+          ls -l /lib/x86_64-linux-gnu/libncurses.so.5
+      continue-on-error: true
       
     - name: Building Image 
       run: |
