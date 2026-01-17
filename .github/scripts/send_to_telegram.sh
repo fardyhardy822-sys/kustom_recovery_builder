@@ -28,6 +28,9 @@ send_file() {
     -F parse_mode="MarkdownV2"
 }
 
+# Clean the device tree URL (removes .git if present)
+CLEAN_TREE=$(echo "${DEVICE_TREE}" | sed 's/\.git$//')
+
 # === Build Telegram message ===
 text=$(
   cat << EOF
@@ -36,7 +39,7 @@ text=$(
 📱 *Device*: \`${DEVICE}\`
 🌿 *Branch*: \`${BRANCH}\`
 📅 *Build Date*: \`${BUILD_DATE}\`
-📝 *Commit*: [${COMMIT_ID}](${DEVICE_TREE}/commit/${COMMIT_ID})
+📝 *Commit*: [${COMMIT_ID:0:7}](${CLEAN_TREE}/commit/${COMMIT_ID})
 🔗 [View Release on GitHub](${RELEASE_URL})
 EOF
 )
