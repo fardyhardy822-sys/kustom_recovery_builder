@@ -19,6 +19,15 @@ jobs:
       - name: Install Python 2.7 and Pip (Ubuntu 24.04)
         if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
         run: |
+          sudo apt update
+          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.3-2ubuntu0.1_amd64.deb
+          wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          sudo apt install ./libncurses5_6.3-2ubuntu0.1_amd64.deb
+          ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          
+      - name: Install Python 2.7 and Pip (Ubuntu 24.04)
+        if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
+        run: |
           sudo apt update && sudo apt upgrade
           sudo apt install -y build-essential checkinstall libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev
           wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
