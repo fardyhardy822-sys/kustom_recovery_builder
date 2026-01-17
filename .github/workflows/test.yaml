@@ -28,7 +28,13 @@ jobs:
 
           sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.5 /usr/lib/x86_64-linux-gnu/libncurses.so.5
           sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.5 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
- 
+          sudo rm -f /lib/x86_64-linux-gnu/libncurses.so.5
+          sudo rm -f /lib/x86_64-linux-gnu/libtinfo.so.5
+          sudo dpkg -i libtinfo5_6.3-2ubuntu0.1_amd64.deb
+          sudo dpkg -i libncurses5_6.3-2ubuntu0.1_amd64.deb
+          sudo mkdir -p /usr/lib/x86_64-linux-gnu
+          sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.5.9 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+          sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.5.9 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
           ls -l /lib/x86_64-linux-gnu/libncurses.so.5
           
       - name: Install Python 2.7 and Pip (Ubuntu 24.04)
