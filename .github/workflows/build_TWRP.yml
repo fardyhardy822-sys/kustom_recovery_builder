@@ -143,22 +143,20 @@ jobs:
         fi
       continue-on-error: true
       
-    - name: Manual Python 2.7 Install
+    - name: Compile and Install Python 2.7 
       if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
       run: |
-        # Download a verified portable Python 2.7
-        curl -Lo python_bin.tar.gz https://github.com/indygreg/python-build-standalone/releases/download/20240107/cpython-2.7.18+20240107-x86_64-unknown-linux-gnu-install_only.tar.gz
-        
-        # Extract
-        mkdir -p python2_folder
-        tar -xzf python_bin.tar.gz -C python2_folder
-        
-        # Create the symlink so the build system finds 'python'
-        sudo ln -sf $(pwd)/python2_folder/python/bin/python2 /usr/bin/python
-        sudo ln -sf $(pwd)/python2_folder/python/bin/python2 /usr/bin/python2
-        
-        # Verify
-        python --version
+        sudo apt update && sudo apt upgrade
+        sudo apt install -y build-essential checkinstall libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev
+         wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
+        tar -xvf Python-2.7.18.tgz
+        cd Python-2.7.18
+        ./configure --prefix=/usr/local
+         make
+         sudo make install
+         sudo update-alternatives --install /usr/bin/python python /usr/local/lib/python2.7 1
+         sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
+         python -V
       continue-on-error: true
       
     - name: Building Image 
