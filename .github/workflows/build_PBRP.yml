@@ -133,13 +133,44 @@ jobs:
         fi
       continue-on-error: true
 
-    - name: Install Python 2
-      if: github.event.inputs.MANIFEST_BRANCH != 'android-11.0' && github.event.inputs.MANIFEST_BRANCH != 'android-12.1'
+    - name: libncurse5
+      if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
       run: |
-        sudo apt -y install python2
-        cd /usr/bin
-        sudo ln -sf python2 python
+         sudo apt update
+         wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+         wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.3-2ubuntu0.1_amd64.deb
+
+         sudo dpkg -i libtinfo5_6.3-2ubuntu0.1_amd64.deb
+         sudo dpkg -i libncurses5_6.3-2ubuntu0.1_amd64.deb
+
+         sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.5 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+         sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.5 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+         sudo rm -f /lib/x86_64-linux-gnu/libncurses.so.5
+         sudo rm -f /lib/x86_64-linux-gnu/libtinfo.so.5
+         sudo dpkg -i libtinfo5_6.3-2ubuntu0.1_amd64.deb
+         sudo dpkg -i libncurses5_6.3-2ubuntu0.1_amd64.deb
+         sudo mkdir -p /usr/lib/x86_64-linux-gnu
+         sudo ln -sf /lib/x86_64-linux-gnu/libncurses.so.5.9 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+         sudo ln -sf /lib/x86_64-linux-gnu/libtinfo.so.5.9 /usr/lib/x86_64-linux-gnu/libtinfo.so.5
+         ls -l /lib/x86_64-linux-gnu/libncurses.so.5
       continue-on-error: true
+      
+    - name: Compile and Install Python 2.7 
+      if: github.event.inputs.MANIFEST_BRANCH != 'twrp-11' && github.event.inputs.MANIFEST_BRANCH != 'twrp-12.1'
+      run: |
+        sudo apt update && sudo apt upgrade
+        sudo apt install -y build-essential checkinstall libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev
+         wget https://www.python.org/ftp/python/2.7.18/Python-2.7.18.tgz
+        tar -xvf Python-2.7.18.tgz
+        cd Python-2.7.18
+        ./configure --prefix=/usr/local
+         make
+         sudo make install
+         sudo update-alternatives --install /usr/bin/python python /usr/local/lib/python2.7 1
+         sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
+         python -V
+      continue-on-error: true
+      
     - name: Fixed Missing Fonts
       run: |
         cd android-recovery
