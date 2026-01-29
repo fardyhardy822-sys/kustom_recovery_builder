@@ -105,7 +105,7 @@ jobs:
         cd android-recovery
         git config --global user.name "${{ github.actor }}"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-        repo init --depth=1 -u https://github.com/naden01/manifest_pb.git -b ${{ github.event.inputs.MANIFEST_BRANCH }}
+        repo init --depth=1 -u https://github.com/PitchBlackRecoveryProject/manifest_pb.git -b ${{ github.event.inputs.MANIFEST_BRANCH }}
       continue-on-error: true
       
     - name: Repo Sync
@@ -185,7 +185,8 @@ jobs:
         cd android-recovery
         source build/envsetup.sh
         export ALLOW_MISSING_DEPENDENCIES=true
-        lunch ${{ env.DEVICE_MAKEFILE }}-eng && make clean && make ${{ github.event.inputs.BUILD_TARGET }}image -j$(nproc --all)
+        export PB_OFFICIAL=true
+        lunch ${{ env.DEVICE_MAKEFILE }}-eng && make clean && m pbrp
       continue-on-error: true
       
     - name: Set Build Date # Output will be use in Release
