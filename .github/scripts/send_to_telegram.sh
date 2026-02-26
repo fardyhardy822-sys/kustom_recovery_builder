@@ -1,11 +1,25 @@
 #!/bin/bash
 set -e
 
-# ─────────────────────────────────────────────
-#  Usage:
-#   notify  → sent at workflow start
-#   release → sent after build completes
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+#  Positional args — same for both modes, unused ones are ""
+#
+#  $1  MODE            "notify" | "release"
+#  $2  DEVICE          e.g. LH8n
+#  $3  BRANCH          e.g. android-12.1
+#  $4  BUILD_DATE      e.g. 2025-01-01
+#  $5  COMMIT_ID       full SHA (release only)
+#  $6  RELEASE_URL     GitHub release URL (release only)
+#  $7  DEVICE_TREE     raw git URL (release only, .git stripped inside)
+#  $8  CHAT_ID         Telegram chat/channel ID
+#  $9  TOKEN           Telegram bot token
+#  $10 WORKFLOW_NAME   ${{ github.workflow }}
+#  $11 WORKFLOW_RUN_URL full actions run URL
+#  $12 GITHUB_TOKEN    ${{ secrets.GITHUB_TOKEN }} (release only)
+#  $13 REPO            ${{ github.repository }}    (release only)
+#  $14 RUN_ID          ${{ github.run_id }}        (release only)
+# ─────────────────────────────────────────────────────────────
+
 MODE="$1"
 DEVICE="$2"
 BRANCH="$3"
@@ -17,23 +31,30 @@ CHAT_ID="$8"
 TOKEN="$9"
 WORKFLOW_NAME="${10}"
 WORKFLOW_RUN_URL="${11}"
-GITHUB_TOKEN="${12}"    # ${{ secrets.GITHUB_TOKEN }} — needed to download logs
-REPO="${13}"            # ${{ github.repository }}  e.g. "naden01/kustom_recovery_builder"
-RUN_ID="${14}"          # ${{ github.run_id }}
+GITHUB_TOKEN="${12}"
+REPO="${13}"
+RUN_ID="${14}"
 
 # ─────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────
 escape_md() {
-  echo "$1" | sed 's/[_*\[\]()~`>#+\-=|{}.!\\]/\\&/g'
+  # Escapes all MarkdownV2 reserved characters
+  printf '%s' "$1" | sed 's/[_*\[\]()~`>#+\-=|{}.!\\]/\\&/g'
 }
 
 send_message() {
   local TEXT="$1"
-  curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+  RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
     -d chat_id="$CHAT_ID" \
     --data-urlencode text="$TEXT" \
-    -d parse_mode="MarkdownV2"
+    -d parse_mode="MarkdownV2")
+  echo "Telegram response: $RESPONSE"
+  if echo "$RESPONSE" | grep -q '"ok":false'; then
+    echo "❌ Failed to send Telegram message"
+    echo "$RESPONSE"
+    exit 1
+  fi
 }
 
 send_file() {
@@ -48,9 +69,8 @@ send_file() {
   local SIZE
   SIZE=$(stat -c%s "$FILE_PATH" 2>/dev/null || stat -f%z "$FILE_PATH")
 
-  # Telegram bot limit is 50 MB — split if needed
   if (( SIZE > 50000000 )); then
-    echo "⚠️ $FILE_PATH exceeds 50 MB — splitting before upload"
+    echo "⚠️ $FILE_PATH exceeds 50 MB — splitting"
     split -b 45M "$FILE_PATH" "${FILE_PATH}.part_"
     local PART_NUM=1
     for PART in "${FILE_PATH}.part_"*; do
@@ -87,17 +107,21 @@ download_github_logs() {
 
   mkdir -p "$OUT_DIR"
   unzip -q "$OUT_ZIP" -d "$OUT_DIR"
-
-  # Merge all .txt log files into one clean file, sorted by step number
   find "$OUT_DIR" -name "*.txt" | sort | xargs cat > "$MERGED"
-
   echo "$MERGED"
 }
 
 # ─────────────────────────────────────────────
-#  Clean device tree URL
+#  Validate required args
 # ─────────────────────────────────────────────
-CLEAN_TREE=$(echo "${DEVICE_TREE}" | sed 's/\.git$//')
+if [[ -z "$CHAT_ID" || -z "$TOKEN" ]]; then
+  echo "❌ CHAT_ID or TOKEN is empty — check argument positions!"
+  echo "    CHAT_ID=[$CHAT_ID]"
+  echo "    TOKEN=[$TOKEN]"
+  exit 1
+fi
+
+echo "🔍 Debug: MODE=$MODE DEVICE=$DEVICE BRANCH=$BRANCH CHAT_ID=[set] TOKEN=[set]"
 
 # ─────────────────────────────────────────────
 #  MODE: notify
@@ -108,8 +132,7 @@ if [[ "$MODE" == "notify" ]]; then
 📋 *Workflow*: \`$(escape_md "${WORKFLOW_NAME}")\`
 📱 *Device*: \`$(escape_md "${DEVICE}")\`
 🌿 *Branch*: \`$(escape_md "${BRANCH}")\`
-📅 *Date*: \`$(escape_md "${BUILD_DATE}")\`
-🔍 [Watch Live on GitHub Actions](${WORKFLOW_RUN_URL})
+🔍 [Watch on GitHub Actions](${WORKFLOW_RUN_URL})
 EOF
 )
   send_message "$text"
@@ -121,6 +144,8 @@ fi
 #  MODE: release
 # ─────────────────────────────────────────────
 if [[ "$MODE" == "release" ]]; then
+  CLEAN_TREE=$(echo "${DEVICE_TREE}" | sed 's/\.git$//')
+
   text=$(cat << EOF
 🚀 *Unofficial Custom Recovery Build Released*
 📋 *Workflow*: \`$(escape_md "${WORKFLOW_NAME}")\`
@@ -134,7 +159,6 @@ EOF
 )
   send_message "$text"
 
-  # Download and send the actual GitHub Actions logs
   LOG_FILE=$(download_github_logs)
   if [[ -f "$LOG_FILE" ]]; then
     send_file "$LOG_FILE" "🪵 *Workflow Log* \`$(escape_md "${DEVICE}")\`"
