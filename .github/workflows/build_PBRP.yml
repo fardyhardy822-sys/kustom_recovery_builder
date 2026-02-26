@@ -107,7 +107,21 @@ jobs:
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
         repo init --depth=1 -u https://github.com/PitchBlackRecoveryProject/manifest_pb.git -b ${{ github.event.inputs.MANIFEST_BRANCH }}
       continue-on-error: true
-      
+
+    - name: Notify Telegram — Build Started
+      run: |
+        chmod +x .github/scripts/send_to_telegram.sh
+        .github/scripts/send_to_telegram.sh \
+           "notify" \
+           "${{ github.event.inputs.DEVICE_NAME }}" \
+           "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+           "${{ env.BUILD_DATE }}" \
+           "${{ env.CLEAN_DEVICE_TREE }}" \
+           "${{ secrets.TELEGRAM_CHAT_ID }}" \
+           "${{ secrets.TELEGRAM_TOKEN }}" \
+           "${{ github.workflow }}" \
+           "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+           
     - name: Repo Sync
       run: |
         cd android-recovery
@@ -245,16 +259,21 @@ jobs:
         echo "Done checking missing dependencies. Review, and reconfigure your tree."
       continue-on-error: true
 
-    - name: Send release info to Telegram
+    - name: Notify Telegram — Build Done
+      if: success()
       run: |
-        chmod +x .github/scripts/send_to_telegram.sh
         .github/scripts/send_to_telegram.sh \
-        "${{ github.event.inputs.DEVICE_NAME }}" \
-        "${{ github.event.inputs.MANIFEST_BRANCH }}" \
-        "${{ env.BUILD_DATE }}" \
-        "${{ env.COMMIT_ID }}" \
-        "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
-        "${{ env.CLEAN_DEVICE_TREE }}" \
-        "${{ secrets.TELEGRAM_CHAT_ID }}" \
-        "${{ secrets.TELEGRAM_TOKEN }}" \
-        "${{ github.workflow }}"
+          "release" \
+          "${{ github.event.inputs.DEVICE_NAME }}" \
+           "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+           "${{ env.BUILD_DATE }}" \
+           "${{ env.COMMIT_ID }}" \
+           "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
+           "${{ env.CLEAN_DEVICE_TREE }}" \
+           "${{ secrets.TELEGRAM_CHAT_ID }}" \
+           "${{ secrets.TELEGRAM_TOKEN }}" \
+           "${{ github.workflow }}" \
+           "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+           "${{ secrets.GITHUB_TOKEN }}" \
+           "${{ github.repository }}" \
+           "${{ github.run_id }}"
