@@ -74,7 +74,26 @@ jobs:
         cd scripts
         sudo bash setup/android_build_env.sh
       continue-on-error: true
-      
+
+    - name: Notify Telegram — Build Started
+      run: |
+          chmod +x .github/scripts/send_to_telegram.sh
+          .github/scripts/send_to_telegram.sh \
+            "notify" \
+            "${{ github.event.inputs.DEVICE_NAME }}" \
+            "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+            "" \
+            "" \
+            "" \
+            "" \
+            "${{ secrets.TELEGRAM_CHAT_ID }}" \
+            "${{ secrets.TELEGRAM_TOKEN }}" \
+            "${{ github.workflow }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "" \
+            "" \
+            ""
+            
     - name: Set-up Manifest
       if: github.event.inputs.MANIFEST_BRANCH == '11.0' || github.event.inputs.MANIFEST_BRANCH == '12.1'
       run: |
@@ -163,16 +182,21 @@ jobs:
         echo "Done checking missing dependencies. Review, and reconfigure your tree."
       continue-on-error: true
 
-    - name: Send release info to Telegram
+    - name: Notify Telegram — Build Done
+      if: success()
       run: |
-       chmod +x .github/scripts/send_to_telegram.sh
-       .github/scripts/send_to_telegram.sh \
-       "${{ github.event.inputs.DEVICE_NAME }}" \
-       "${{ github.event.inputs.MANIFEST_BRANCH }}" \
-       "${{ env.BUILD_DATE }}" \
-       "${{ env.COMMIT_ID }}" \
-       "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
-       "${{ github.event.inputs.DEVICE_TREE }}" \
-       "${{ secrets.TELEGRAM_CHAT_ID }}" \
-       "${{ secrets.TELEGRAM_TOKEN }}"
-      
+        .github/scripts/send_to_telegram.sh \
+          "release" \
+          "${{ github.event.inputs.DEVICE_NAME }}" \
+           "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+           "${{ env.BUILD_DATE }}" \
+           "${{ env.COMMIT_ID }}" \
+           "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
+           "${{ env.CLEAN_DEVICE_TREE }}" \
+           "${{ secrets.TELEGRAM_CHAT_ID }}" \
+           "${{ secrets.TELEGRAM_TOKEN }}" \
+           "${{ github.workflow }}" \
+           "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+           "${{ secrets.GITHUB_TOKEN }}" \
+           "${{ github.repository }}" \
+           "${{ github.run_id }}"
