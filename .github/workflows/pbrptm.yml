@@ -1,22 +1,32 @@
-name: Build - PBRP (tmate)
+name: Debug - Sync & tmate
 
 on:
   workflow_dispatch:
     inputs:
-      MANIFEST_BRANCH:
-        description: 'Manifest Branch'
+      RECOVERY:
+        description: 'Recovery to Sync'
         required: true
-        default: ''
+        default: 'PBRP'
+        type: choice
+        options:
+        - PBRP
+        - OFRP
+      MANIFEST_BRANCH:
+        description: 'Manifest Branch (PBRP: android-12.1 / OFRP: 12.1)'
+        required: true
+        default: 'android-12.1'
         type: choice
         options:
         - android-12.1
         - android-11.0
         - android-9.0
         - android-8.1
+        - 12.1
+        - 11.0
 
 jobs:
   build:
-    name: tmate PBRP by ${{ github.actor }}
+    name: Debug by ${{ github.actor }}
     runs-on: ubuntu-24.04
     if: github.event.repository.owner.id == github.event.sender.id
     env:
@@ -39,11 +49,13 @@ jobs:
       run: |
         sudo apt update && sudo apt upgrade -y
         DEBIAN_FRONTEND=noninteractive sudo apt install -yq \
-            gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
-            libc6-dev lib32ncurses-dev x11proto-core-dev libx11-dev tree lib32z-dev libgl1-mesa-dev libxml2-utils \
-            xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libsdl1.2-dev \
-            build-essential git libxml2 lzop pngcrush schedtool squashfs-tools \
-            imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libncurses6 python3 tar
+            aria2 gperf gcc-multilib gcc-10-multilib g++-multilib g++-10-multilib \
+            libc6-dev lib32ncurses-dev x11proto-core-dev libx11-dev tree lib32z-dev \
+            libgl1-mesa-dev libxml2-utils xsltproc bc ccache lib32readline-dev \
+            lib32z1-dev liblz4-tool libncurses-dev libsdl1.2-dev build-essential \
+            git libxml2 lzop pngcrush schedtool squashfs-tools imagemagick \
+            libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libncurses6 \
+            python3 tar
 
     - name: Install Git-Repo
       run: |
@@ -52,17 +64,43 @@ jobs:
         chmod a+x ~/bin/repo
         sudo ln -sf ~/bin/repo /usr/bin/repo
 
-    - name: Initialize and Sync Repo
+    # ── PBRP ──────────────────────────────────────────────────────────────────
+    - name: Init & Sync PBRP Manifest
+      if: github.event.inputs.RECOVERY == 'PBRP'
       run: |
         mkdir android-recovery
         cd android-recovery
         git config --global user.name "${{ github.actor }}"
         git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-        repo init --depth=1 -u https://github.com/PitchBlackRecoveryProject/manifest_pb.git -b ${{ github.event.inputs.MANIFEST_BRANCH }}
+        repo init --depth=1 -u https://github.com/PitchBlackRecoveryProject/manifest_pb.git \
+          -b ${{ github.event.inputs.MANIFEST_BRANCH }}
         repo sync -j$(nproc --all) --force-sync
 
+    # ── OFRP ──────────────────────────────────────────────────────────────────
+    - name: Install OrangeFox Build Environment
+      if: github.event.inputs.RECOVERY == 'OFRP'
+      run: |
+        git clone https://gitlab.com/OrangeFox/misc/scripts
+        cd scripts
+        sudo bash setup/android_build_env.sh
+      continue-on-error: true
+
+    - name: Init & Sync OFRP Manifest
+      if: github.event.inputs.RECOVERY == 'OFRP'
+      run: |
+        mkdir -p ${GITHUB_WORKSPACE}/OrangeFox
+        cd ${GITHUB_WORKSPACE}/OrangeFox
+        git config --global user.name "${{ github.actor }}"
+        git config --global user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+        git clone https://gitlab.com/OrangeFox/sync.git
+        cd sync
+        ./orangefox_sync.sh \
+          --branch ${{ github.event.inputs.MANIFEST_BRANCH }} \
+          --path ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ github.event.inputs.MANIFEST_BRANCH }}
+
+    # ── tmate ─────────────────────────────────────────────────────────────────
     - name: Setup tmate session
       uses: mxschmitt/action-tmate@v3
       with:
         detached: false
-        authorized-keys: ${{ secrets.SSH_PUBLIC_KEY }}
+        limit-access-to-actor: true
