@@ -245,6 +245,7 @@ jobs:
       with:
         files: |
           android-recovery/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/vendor_boot.img
+          android-recovery/out/target/product/${{ github.event.inputs.DEVICE_NAME }}/zip/../PBRP*.zip
         name: Unofficial TWRP for ${{ github.event.inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
