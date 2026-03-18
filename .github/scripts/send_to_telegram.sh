@@ -2,22 +2,20 @@
 set -e
 
 # ─────────────────────────────────────────────────────────────
-#  Positional args — same for both modes, unused ones are ""
-#
 #  $1  MODE            "notify" | "release"
-#  $2  DEVICE          e.g. LH8n
-#  $3  BRANCH          e.g. android-12.1
-#  $4  BUILD_DATE      e.g. 2025-01-01
-#  $5  COMMIT_ID       full SHA (release only)
-#  $6  RELEASE_URL     GitHub release URL (release only)
-#  $7  DEVICE_TREE     raw git URL (release only, .git stripped inside)
-#  $8  CHAT_ID         Telegram chat/channel ID
-#  $9  TOKEN           Telegram bot token
-#  $10 WORKFLOW_NAME   ${{ github.workflow }}
-#  $11 WORKFLOW_RUN_URL full actions run URL
-#  $12 GITHUB_TOKEN    ${{ secrets.GITHUB_TOKEN }} (release only)
-#  $13 REPO            ${{ github.repository }}    (release only)
-#  $14 RUN_ID          ${{ github.run_id }}        (release only)
+#  $2  DEVICE
+#  $3  BRANCH
+#  $4  BUILD_DATE      (release only)
+#  $5  COMMIT_ID       (release only)
+#  $6  RELEASE_URL     (release only)
+#  $7  DEVICE_TREE     (release only)
+#  $8  CHAT_ID
+#  $9  TOKEN
+#  $10 WORKFLOW_NAME
+#  $11 WORKFLOW_RUN_URL
+#  $12 GITHUB_TOKEN    (release only)
+#  $13 REPO            (release only)
+#  $14 RUN_ID          (release only)
 # ─────────────────────────────────────────────────────────────
 
 MODE="$1"
@@ -39,7 +37,6 @@ RUN_ID="${14}"
 #  Helpers
 # ─────────────────────────────────────────────
 escape_md() {
-  # Escapes all MarkdownV2 reserved characters
   printf '%s' "$1" | sed 's/[_*\[\]()~`>#+\-=|{}.!\\]/\\&/g'
 }
 
@@ -52,7 +49,6 @@ send_message() {
   echo "Telegram response: $RESPONSE"
   if echo "$RESPONSE" | grep -q '"ok":false'; then
     echo "❌ Failed to send Telegram message"
-    echo "$RESPONSE"
     exit 1
   fi
 }
@@ -81,7 +77,7 @@ send_file() {
     return 0
   fi
 
-  echo "📤 Uploading: $FILE_PATH"
+  echo "📤 Uploading: $FILE_PATH ($(( SIZE / 1024 )) KB)"
   curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendDocument" \
     -F chat_id="${CHAT_ID}" \
     -F document=@"${FILE_PATH}" \
@@ -93,31 +89,51 @@ download_github_logs() {
   local OUT_ZIP="/tmp/run_logs.zip"
   local OUT_DIR="/tmp/run_logs"
   local MERGED="/tmp/workflow_build.log"
+  local ERR_BODY="/tmp/logs_api_error.json"
 
   echo "📥 Downloading workflow logs from GitHub API..."
+  echo "   Repo: ${REPO}  Run: ${RUN_ID}"
+
   HTTP_STATUS=$(curl -s -w "%{http_code}" -o "$OUT_ZIP" \
     -H "Authorization: Bearer ${GITHUB_TOKEN}" \
     -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
     -L "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/logs")
 
+  echo "   GitHub API HTTP status: $HTTP_STATUS"
+
   if [[ "$HTTP_STATUS" != "200" ]]; then
-    echo "⚠️ Failed to download logs (HTTP $HTTP_STATUS)"
-    return 1
+    # The response body (error JSON) was written to OUT_ZIP — print it
+    echo "⚠️ Failed to download logs:"
+    cat "$OUT_ZIP" || true
+    return 0   # non-fatal — message was already sent, just skip the file
+  fi
+
+  # Verify it's actually a zip
+  if ! file "$OUT_ZIP" | grep -q "Zip"; then
+    echo "⚠️ Downloaded file is not a zip:"
+    cat "$OUT_ZIP" || true
+    return 0
   fi
 
   mkdir -p "$OUT_DIR"
   unzip -q "$OUT_ZIP" -d "$OUT_DIR"
+
+  # Merge all step logs sorted by name (step order)
   find "$OUT_DIR" -name "*.txt" | sort | xargs cat > "$MERGED"
+
+  local MERGED_SIZE
+  MERGED_SIZE=$(stat -c%s "$MERGED" 2>/dev/null || stat -f%z "$MERGED")
+  echo "   Merged log size: $(( MERGED_SIZE / 1024 )) KB"
+
   echo "$MERGED"
 }
 
 # ─────────────────────────────────────────────
-#  Validate required args
+#  Validate
 # ─────────────────────────────────────────────
 if [[ -z "$CHAT_ID" || -z "$TOKEN" ]]; then
   echo "❌ CHAT_ID or TOKEN is empty — check argument positions!"
-  echo "    CHAT_ID=[$CHAT_ID]"
-  echo "    TOKEN=[$TOKEN]"
   exit 1
 fi
 
@@ -159,9 +175,12 @@ EOF
 )
   send_message "$text"
 
-  LOG_FILE=$(download_github_logs)
+  # Download logs — runs in subshell so set -e won't kill us on failure
+  LOG_FILE=$(download_github_logs) || true
   if [[ -f "$LOG_FILE" ]]; then
     send_file "$LOG_FILE" "🪵 *Workflow Log* \`$(escape_md "${DEVICE}")\`"
+  else
+    echo "⚠️ Log file not available — skipping upload."
   fi
 
   echo "✅ Release notification sent."
