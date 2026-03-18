@@ -117,17 +117,25 @@ jobs:
         sed -i '/<remove-project name="platform\/external\/gflags"  \/>/d' .repo/manifests/remove-minimal.xml
       continue-on-error: true
 
-    - name: Send release info to Telegram
+    - name: Notify Telegram — Build Started
       run: |
-        chmod +x .github/scripts/send_to_telegram2.sh
-        .github/scripts/send_to_telegram2.sh \
-        "${{ github.event.inputs.DEVICE_NAME }}" \
-        "${{ github.event.inputs.MANIFEST_BRANCH }}" \
-        "${{ env.BUILD_DATE }}" \
-        "${{ env.COMMIT_ID }}" \
-        "${{ env.CLEAN_DEVICE_TREE }}" \
-        "${{ github.workflow }}"
-        
+          chmod +x .github/scripts/send_to_telegram.sh
+          .github/scripts/send_to_telegram.sh \
+            "notify" \
+            "${{ github.event.inputs.DEVICE_NAME }}" \
+            "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+            "" \
+            "" \
+            "" \
+            "" \
+            "${{ secrets.TELEGRAM_CHAT_ID }}" \
+            "${{ secrets.TELEGRAM_TOKEN }}" \
+            "${{ github.workflow }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "" \
+            "" \
+            ""
+            
     - name: Repo Sync
       run: |
         cd android-recovery
@@ -205,19 +213,6 @@ jobs:
       run: |
         echo "BUILD_DATE=$(date +%Y%m%d)" >> $GITHUB_ENV
 
-    - name: Prepare Clean Metadata
-      run: |
-        # Strip .git from the end of the URL to prevent 404 errors
-        CLEAN_URL=$(echo "${{ github.event.inputs.DEVICE_TREE }}" | sed 's/\.git$//')
-        echo "CLEAN_DEVICE_TREE=$CLEAN_URL" >> $GITHUB_ENV
-        
-        # Ensure COMMIT_ID is set (fetching from the device tree directory)
-        # Adjust the path 'device/*/${{ github.event.inputs.DEVICE_NAME }}' if your tree is elsewhere
-        if [ -z "$COMMIT_ID" ]; then
-          cd device/*/${{ github.event.inputs.DEVICE_NAME }} || cd android-recovery/device/*/${{ github.event.inputs.DEVICE_NAME }}
-          echo "COMMIT_ID=$(git rev-parse HEAD)" >> $GITHUB_ENV
-        fi
-        
     - name: Upload to Release (boot and recovery)
       if: github.event.inputs.BUILD_TARGET == 'boot' || github.event.inputs.BUILD_TARGET == 'recovery'
       uses: softprops/action-gh-release@v2
@@ -256,16 +251,21 @@ jobs:
         echo "Done checking missing dependencies. Review, and reconfigure your tree."
       continue-on-error: true
 
-    - name: Send release info to Telegram
+    - name: Notify Telegram — Build Done
+      if: success()
       run: |
-        chmod +x .github/scripts/send_to_telegram.sh
         .github/scripts/send_to_telegram.sh \
-        "${{ github.event.inputs.DEVICE_NAME }}" \
-        "${{ github.event.inputs.MANIFEST_BRANCH }}" \
-        "${{ env.BUILD_DATE }}" \
-        "${{ env.COMMIT_ID }}" \
-        "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
-        "${{ env.CLEAN_DEVICE_TREE }}" \
-        "${{ secrets.TELEGRAM_CHAT_ID }}" \
-        "${{ secrets.TELEGRAM_TOKEN }}" \
-        "${{ github.workflow }}"
+          "release" \
+          "${{ github.event.inputs.DEVICE_NAME }}" \
+           "${{ github.event.inputs.MANIFEST_BRANCH }}" \
+           "${{ env.BUILD_DATE }}" \
+           "${{ env.COMMIT_ID }}" \
+           "${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.run_id }}" \
+           "${{ env.CLEAN_DEVICE_TREE }}" \
+           "${{ secrets.TELEGRAM_CHAT_ID }}" \
+           "${{ secrets.TELEGRAM_TOKEN }}" \
+           "${{ github.workflow }}" \
+           "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+           "${{ secrets.GITHUB_TOKEN }}" \
+           "${{ github.repository }}" \
+           "${{ github.run_id }}"
